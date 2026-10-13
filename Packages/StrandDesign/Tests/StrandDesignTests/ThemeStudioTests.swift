@@ -17,7 +17,7 @@ final class ThemeStudioTests: XCTestCase {
     }
 
     func testDecodeDropsUnknownSlotsAndBadHex() {
-        let raw = #"{"charge":"#12ab34","bogus":"#000000","rest":"blue"}"#
+        let raw = ##"{"charge":"#12ab34","bogus":"#000000","rest":"blue"}"##
         XCTAssertEqual(ThemeStudio.decodeOverrides(raw), [.charge: "#12AB34"])
     }
 
