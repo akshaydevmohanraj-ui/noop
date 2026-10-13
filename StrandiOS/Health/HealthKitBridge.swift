@@ -103,12 +103,7 @@ final class HealthKitBridge: ObservableObject {
         s.insert(HKSeriesType.workoutRoute())
         // Extended Apple Health metrics (mobility, running form, activity rings, daylight, audio,
         // mindfulness, heart events). Read-only; consumed by `syncExtended`.
-        for spec in HealthKitBridge.extendedQuantitySpecs {
-            if let t = HKObjectType.quantityType(forIdentifier: spec.id) { s.insert(t) }
-        }
-        for spec in HealthKitBridge.extendedCategorySpecs {
-            if let t = HKObjectType.categoryType(forIdentifier: spec.id) { s.insert(t) }
-        }
+        s.formUnion(HealthKitBridge.extendedReadTypes)
         return s
     }
 
