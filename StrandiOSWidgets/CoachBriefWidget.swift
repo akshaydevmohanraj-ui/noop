@@ -31,11 +31,13 @@ struct CoachBriefProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (CoachBriefEntry) -> Void) {
+        WidgetTheme.applyInExtension()
         let entry = loadEntry()
         completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<CoachBriefEntry>) -> Void) {
+        WidgetTheme.applyInExtension()
         let entry = loadEntry()
         // Refresh every 30 minutes — the app pushes a reload via WidgetCenter when a new brief is
         // published, so this is just a safety net for when the app isn't running.
