@@ -65,7 +65,7 @@ final class HealthKitBridge: ObservableObject {
     private let store = HKHealthStore()
     private let repo: Repository
     /// Source id imported HealthKit data lands under (matches `AppModel.appleDeviceId`).
-    private let appleDeviceId: String
+    let appleDeviceId: String
     /// NOOP's own strap-derived source id, read back when writing into Health.
     private let noopDeviceId: String
     /// NOOP's on-device COMPUTED daily scores (recovery/HRV/RHR/SpO₂/resp) live under the sibling
@@ -101,6 +101,14 @@ final class HealthKitBridge: ObservableObject {
         // empty and the imported workout shows distance but no map — same as today, so the addition
         // is strictly additive.
         s.insert(HKSeriesType.workoutRoute())
+        // Extended Apple Health metrics (mobility, running form, activity rings, daylight, audio,
+        // mindfulness, heart events). Read-only; consumed by `syncExtended`.
+        for spec in HealthKitBridge.extendedQuantitySpecs {
+            if let t = HKObjectType.quantityType(forIdentifier: spec.id) { s.insert(t) }
+        }
+        for spec in HealthKitBridge.extendedCategorySpecs {
+            if let t = HKObjectType.categoryType(forIdentifier: spec.id) { s.insert(t) }
+        }
         return s
     }
 
@@ -743,6 +751,9 @@ final class HealthKitBridge: ObservableObject {
                     UserDefaults.standard.set(true, forKey: Self.hourlyStepsBackfilledKey)
                 }
             }
+            // Extended metrics write to their own metricSeries keys and skip per metric on failure, so
+            // they can never hold back or clobber the core rows above.
+            await syncExtended(store: store, start: start, end: end)
             try await writeBack(whoopStore: store)
             lastSync = Date()
             // Record the window alongside the time: an observer wake may only stand down for a sync that
@@ -1503,7 +1514,7 @@ final class HealthKitBridge: ObservableObject {
         case failed
     }
 
-    private func collect(_ id: HKQuantityTypeIdentifier, unit: HKUnit, start: Date, end: Date,
+    func collect(_ id: HKQuantityTypeIdentifier, unit: HKUnit, start: Date, end: Date,
                          op: HKStatisticsOptions, sink: @escaping (String, Double) -> Void) async -> HealthRead {
         guard let type = HKQuantityType.quantityType(forIdentifier: id) else { return .unavailable }
         let cal = Calendar.current
@@ -1946,7 +1957,7 @@ final class HealthKitBridge: ObservableObject {
         let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd"; f.timeZone = TimeZone.current; return f
     }()
-    nonisolated private static func dayString(_ date: Date) -> String { dayFormatter.string(from: date) }
+    nonisolated static func dayString(_ date: Date) -> String { dayFormatter.string(from: date) }
     nonisolated private static func date(from day: String) -> Date? { dayFormatter.date(from: day) }
 }
 #endif
