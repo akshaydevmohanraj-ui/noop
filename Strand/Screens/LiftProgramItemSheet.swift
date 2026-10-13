@@ -148,15 +148,18 @@ struct LiftProgramItemSheet: View {
                                     // A typo becomes a permanent picker entry otherwise. Forgetting a
                                     // name is safe by construction: every logged set SNAPSHOTS its
                                     // exercise name and classification, so history is untouched.
-                                    Button(role: .destructive) {
-                                        forgetting = row
-                                    } label: {
-                                        Image(systemName: "trash")
-                                            .font(.system(size: 12, weight: .semibold))
-                                            .foregroundStyle(StrandPalette.textTertiary)
+                                    // Built-in library suggestions are not stored, so there is nothing to forget.
+                                    if !row.id.hasPrefix("library:") {
+                                        Button(role: .destructive) {
+                                            forgetting = row
+                                        } label: {
+                                            Image(systemName: "trash")
+                                                .font(.system(size: 12, weight: .semibold))
+                                                .foregroundStyle(StrandPalette.textTertiary)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .accessibilityLabel("Forget this exercise")
                                     }
-                                    .buttonStyle(.plain)
-                                    .accessibilityLabel("Forget this exercise")
                                 }
                             }
                         }
