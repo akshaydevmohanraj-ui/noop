@@ -26,6 +26,7 @@ struct LiftLogView: View {
     /// The program being created or edited (nil = the editor is closed).
     @State private var editing: ProgramEditTarget?
     @State private var importing = false
+    @State private var showingLibrary = false
     /// The live session, owned at the app root so it survives this screen going away.
     @EnvironmentObject private var session: LiftSessionController
     /// Recent finished sessions, newest first.
@@ -57,6 +58,9 @@ struct LiftLogView: View {
         // Also on a saved session: the session sheet lives above this screen and cannot tell it
         // directly, and a save does not always bump `refreshSeq`.
         .task(id: "\(repo.refreshSeq)-\(session.savedSessions)") { await load() }
+        .sheet(isPresented: $showingLibrary) {
+            ExerciseLibraryView(onClose: { showingLibrary = false })
+        }
         .sheet(item: $editing) { target in
             LiftProgramEditorSheet(program: target.program) {
                 await load()
@@ -97,6 +101,9 @@ struct LiftLogView: View {
                     .font(StrandFont.footnote)
                     .foregroundStyle(StrandPalette.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                NoopButton("Exercise library", systemImage: "books.vertical", kind: .secondary) {
+                    showingLibrary = true
+                }
             }
         }
     }

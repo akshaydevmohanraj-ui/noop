@@ -33,6 +33,29 @@ final class TrainingLibraryTests: XCTestCase {
         XCTAssertNil(ExerciseLibrary.entry(named: "not an exercise"))
     }
 
+    func testBrowseSplitsGymFromNoEquipment() {
+        let gym = ExerciseLibrary.browse(gym: true)
+        let anywhere = ExerciseLibrary.browse(gym: false)
+        XCTAssertEqual(gym.count + anywhere.count, ExerciseLibrary.entries.count)
+        XCTAssertTrue(gym.allSatisfy { $0.equipment.needsGym })
+        XCTAssertTrue(anywhere.allSatisfy { !$0.equipment.needsGym })
+        XCTAssertFalse(anywhere.isEmpty)
+    }
+
+    func testBrowseFiltersByMuscleAndSearch() {
+        let quads = ExerciseLibrary.browse(gym: true, muscle: .quads)
+        XCTAssertTrue(quads.allSatisfy { $0.allMuscles.contains(.quads) })
+        let press = ExerciseLibrary.browse(gym: true, search: "leg press")
+        XCTAssertTrue(press.contains { $0.name == "Leg Press" })
+    }
+
+    func testMachinesAlwaysNameTheirMachine() {
+        for e in ExerciseLibrary.entries where e.equipment == .machine || e.equipment == .cable
+            || e.equipment == .smith || e.equipment == .other {
+            XCTAssertNotNil(e.setup, e.name)
+        }
+    }
+
     // MARK: MuscleFreshness
 
     private func set(_ primary: LiftMuscle?, _ secondary: [LiftMuscle] = [], reps: Int? = 8,
