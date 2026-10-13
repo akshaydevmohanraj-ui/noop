@@ -183,6 +183,9 @@ struct InsightsView: View {
     @State private var relationships: [Relationship] = []
 
     private let outcomeKeys = ["recovery", "hrv", "sleep_performance", "rhr"]
+    /// Apple Health habit series the Lifestyle links probe against the outcomes.
+    static let lifestyleKeys = ["daylight_min", "exercise_min", "mindful_min", "alcohol_drinks",
+                                "state_of_mind", "steps", "sleep_latency_min"]
 
     // MARK: Native-logging state for the journal card
 
@@ -403,6 +406,13 @@ struct InsightsView: View {
             byKey[key] = dict
             seriesMap[key] = dict.sorted { $0.key < $1.key }.map { (day: $0.key, value: $0.value) }
         }
+
+        // Lifestyle links: imported Apple Health habits plus Day Stress, under an "ah." / plain key so
+        // they never collide with the four outcome keys above.
+        for key in Self.lifestyleKeys {
+            seriesMap["ah." + key] = await repo.series(key: key, source: "apple-health")
+        }
+        seriesMap["stress"] = await repo.series(key: "stress", source: "my-whoop")
 
         // #322: fold each numeric journal item's series into the same day→value maps the effect ranker
         // consumes, under a namespaced "journal.numeric:<question>" key so it never collides with the
@@ -1296,6 +1306,33 @@ struct InsightsView: View {
                              blurb: String(localized: "How much one day's charge carries into the next."),
                              corr: c))
         }
+
+        // Lifestyle links from Apple Health. A night is labelled by the day you wake, so a habit on
+        // day D is compared with the sleep labelled D+1 (lag 1). Each needs two weeks of overlap.
+        func lifestyle(_ id: String, _ title: String, _ blurb: String, _ c: Correlation?) {
+            if let c, c.n >= 14 { out.append(.init(id: id, title: title, blurb: blurb, corr: c)) }
+        }
+        lifestyle("daylight-sleep", String(localized: "Daylight → Sleep"),
+                  String(localized: "Whether more time outside in daylight is followed by a better night."),
+                  CorrelationEngine.lagged(x: series("ah.daylight_min"), y: series("sleep_performance"), lagDays: 1))
+        lifestyle("daylight-latency", String(localized: "Daylight → Time to fall asleep"),
+                  String(localized: "Whether daylight is followed by falling asleep faster."),
+                  CorrelationEngine.lagged(x: series("ah.daylight_min"), y: series("ah.sleep_latency_min"), lagDays: 1))
+        lifestyle("exercise-charge", String(localized: "Exercise → Next-day charge"),
+                  String(localized: "How a day's exercise minutes carry into tomorrow's charge."),
+                  CorrelationEngine.lagged(x: series("ah.exercise_min"), y: series("recovery"), lagDays: 1))
+        lifestyle("mindful-stress", String(localized: "Mindfulness ↔ Stress"),
+                  String(localized: "Whether days with mindful minutes run calmer."),
+                  CorrelationEngine.pearson(CorrelationEngine.alignByDay(series("ah.mindful_min"), series("stress"))))
+        lifestyle("alcohol-hrv", String(localized: "Alcohol → Next-day HRV"),
+                  String(localized: "Drinks logged in Apple Health against the next morning's HRV."),
+                  CorrelationEngine.lagged(x: series("ah.alcohol_drinks"), y: series("hrv"), lagDays: 1))
+        lifestyle("mood-charge", String(localized: "Mood ↔ Charge"),
+                  String(localized: "Moods logged in Apple Health against that day's charge."),
+                  CorrelationEngine.pearson(CorrelationEngine.alignByDay(series("ah.state_of_mind"), series("recovery"))))
+        lifestyle("steps-sleep", String(localized: "Steps → Sleep"),
+                  String(localized: "Whether busier days are followed by better nights."),
+                  CorrelationEngine.lagged(x: series("ah.steps"), y: series("sleep_performance"), lagDays: 1))
 
         return out
     }

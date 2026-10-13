@@ -1,6 +1,7 @@
 #if os(iOS)
 import Foundation
 import WidgetKit
+import StrandAnalytics
 
 extension WidgetSnapshot {
     /// The ACTIVE device's charge for the widget (#2075).
@@ -98,6 +99,16 @@ extension WidgetSnapshot {
         // would decode the App Group blob twice on any publish that could not score, and this file
         // already went to the trouble of removing one such decode from the live path.
         let storedStress: WidgetSnapshot? = stress == nil ? load() : nil
+        // Energy Bank: today's recovery drawn down by strain and by still, high-stress time.
+        let curve = stressPoints ?? storedStress?.stressSeries ?? []
+        let bucketMinutes = curve.count > 1 ? max(1, Double(curve[1].ts - curve[0].ts) / 60) : 15
+        let energy = EnergyBank.reading(
+            recovery: day?.recovery,
+            strain: strain,
+            highStressMinutes: EnergyBank.highStressMinutes(
+                levels: curve.map { (level: $0.level, moving: $0.moving) },
+                bucketMinutes: bucketMinutes, floor: DaytimeStress.highBandFloor)
+        )?.energy
         let snap = WidgetSnapshot(
             recovery: day?.recovery.map { Int($0.rounded()) },
             bpm: model.bpm ?? model.live.heartRate,
@@ -114,7 +125,8 @@ extension WidgetSnapshot {
             // nil when the curve could not be scored at all, which must not blank a widget that already
             // has one: carry the stored values forward instead of publishing an absence.
             stressSeries: stressPoints ?? storedStress?.stressSeries,
-            stressDay: stress?.day ?? storedStress?.stressDay
+            stressDay: stress?.day ?? storedStress?.stressDay,
+            energy: energy
         )
         saveAndReloadIfChanged(snap)
     }

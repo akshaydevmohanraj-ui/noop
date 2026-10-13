@@ -2,6 +2,7 @@
 import Foundation
 import HealthKit
 import WhoopStore
+import StrandAnalytics
 
 /// Extended Apple Health read path: mobility, running form, activity-ring minutes, daylight, audio
 /// exposure, walking heart rate, one-minute heart-rate recovery, mindful minutes and heart events.
@@ -145,6 +146,15 @@ extension HealthKitBridge {
                 points.append(contentsOf: daily.map { MetricPoint(day: $0.key, key: spec.key, value: $0.value) })
             }
         }
+        if let nights = await collectSleepSummaries(start: start, end: end) {
+            for (day, n) in nights {
+                if let v = n.latencyMin { points.append(MetricPoint(day: day, key: "sleep_latency_min", value: v)) }
+                if let v = n.awakenings { points.append(MetricPoint(day: day, key: "awakenings", value: Double(v))) }
+                if let v = n.efficiencyPct { points.append(MetricPoint(day: day, key: "sleep_efficiency", value: v)) }
+                points.append(MetricPoint(day: day, key: "nap_min", value: n.napMin))
+                points.append(MetricPoint(day: day, key: "naps", value: Double(n.naps)))
+            }
+        }
         if #available(iOS 18.0, *), let mood = await collectStateOfMindDaily(start: start, end: end) {
             points.append(contentsOf: mood.map { MetricPoint(day: $0.key, key: "state_of_mind", value: $0.value) })
         }
@@ -178,6 +188,44 @@ extension HealthKitBridge {
             }
             store.execute(q)
         }
+    }
+
+    /// Session-level sleep numbers (latency, awakenings, efficiency, naps) from the raw sleep-stage
+    /// samples, excluding the ones NOOP itself wrote back. Nil when the query fails.
+    private func collectSleepSummaries(start: Date, end: Date) async -> [String: SleepSessionSummary.Day]? {
+        guard let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return nil }
+        // Reach back a day so a night that started before the window still has its opening records.
+        let from = start.addingTimeInterval(-86_400)
+        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
+            HKQuery.predicateForSamples(withStart: from, end: end, options: []),
+            Self.notNoopAuthored,
+        ])
+        let store = HKHealthStore()
+        let samples: [HKCategorySample]? = await withCheckedContinuation { cont in
+            let q = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit,
+                                  sortDescriptors: nil) { _, samples, error in
+                guard error == nil else { cont.resume(returning: nil); return }
+                cont.resume(returning: (samples as? [HKCategorySample]) ?? [])
+            }
+            store.execute(q)
+        }
+        guard let samples else { return nil }
+        let intervals: [SleepSessionSummary.Interval] = samples.compactMap { s in
+            let stage: SleepSessionSummary.Stage
+            switch s.value {
+            case HKCategoryValueSleepAnalysis.inBed.rawValue: stage = .inBed
+            case HKCategoryValueSleepAnalysis.awake.rawValue: stage = .awake
+            case HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
+                 HKCategoryValueSleepAnalysis.asleepCore.rawValue,
+                 HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
+                 HKCategoryValueSleepAnalysis.asleepREM.rawValue: stage = .asleep
+            default: return nil
+            }
+            return SleepSessionSummary.Interval(start: s.startDate, end: s.endDate, stage: stage)
+        }
+        let startDay = HealthKitBridge.dayString(start)
+        return SleepSessionSummary.summarize(intervals) { HealthKitBridge.dayString($0) }
+            .filter { $0.key >= startDay }
     }
 
     /// Daily average State of Mind valence (-1 very unpleasant … +1 very pleasant), from moods and

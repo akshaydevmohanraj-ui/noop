@@ -8,11 +8,12 @@ import StrandDesign
 /// The score a configurable Metric widget shows. Each case reads one field of the shared
 /// `WidgetSnapshot`, so adding a case only needs a snapshot field and a colour.
 enum WidgetMetricChoice: String, AppEnum {
-    case recovery, strain, sleep, hrv, restingHr, heartRate
+    case recovery, energy, strain, sleep, hrv, restingHr, heartRate
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Metric"
     static var caseDisplayRepresentations: [WidgetMetricChoice: DisplayRepresentation] = [
         .recovery: "Recovery",
+        .energy: "Energy Bank",
         .strain: "Strain",
         .sleep: "Sleep",
         .hrv: "HRV",
@@ -110,6 +111,11 @@ private struct ResolvedMetric {
             fraction = snap.recovery.map { Double($0) / 100 }
             label = String(localized: "Recovery"); unit = "%"
             color = StrandPalette.chargeColor; symbol = "bolt.heart"
+        case .energy:
+            text = snap.energy.map(String.init)
+            fraction = snap.energy.map { Double($0) / 100 }
+            label = String(localized: "Energy"); unit = "%"
+            color = StrandPalette.chargeColor; symbol = "battery.75"
         case .strain:
             text = snap.effortDisplay ?? snap.effort.map(String.init)
             fraction = snap.effort.map { Double($0) / 100 }
