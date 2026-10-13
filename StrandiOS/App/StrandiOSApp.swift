@@ -1,6 +1,7 @@
 #if os(iOS)
 import SwiftUI
 import StrandDesign
+import WidgetKit
 import UserNotifications
 
 /// iOS entry point. Unlike the macOS app (which adds a `MenuBarExtra` scene), iOS uses a single
@@ -41,6 +42,7 @@ struct StrandiOSApp: App {
     @AppStorage(AppearanceMode.storageKey) private var appearanceRaw = AppearanceMode.system.rawValue
     /// Chart data-colour style (Titanium / Classic throwback). Re-colours gauges + charts.
     @AppStorage(ChartStyle.storageKey) private var chartStyleRaw = ChartStyle.titanium.rawValue
+    @AppStorage(ThemeStudio.overridesKey) private var themeOverridesRaw = ""
     /// Chrome accent colour (mint / WHOOP blue / custom). Chrome only — never the data colour worlds.
     @AppStorage(AccentColor.storageKey) private var accentRaw = AccentColor.mint.rawValue
     @AppStorage(AccentColor.customHexKey) private var accentCustomHex = AccentColor.defaultCustomHex
@@ -239,6 +241,7 @@ struct StrandiOSApp: App {
                 // changes are process-wide on Apple and are applied after the documented reopen.
                 .environment(\.locale, AppLanguage.activeLocale)
                 .chartStyle(chartStyleRaw)
+                .themeStudio(themeOverridesRaw)
                 .noopAccent(accentRaw, customHex: accentCustomHex)
                 // Dynamic Type now scales the prose/label roles (StrandFont). Cap the upper end so the
                 // fixed-geometry tiles/gauges stay legible at the largest accessibility sizes rather than
@@ -309,6 +312,14 @@ struct StrandiOSApp: App {
                 .onChange(of: effortScaleRaw) { _, _ in
                     guard scenePhase == .active else { return }
                     Task { await WidgetSnapshot.publish(from: model) }
+                }
+                // Theme Studio → widgets: mirror the theme into the App Group so the extension draws with
+                // the same colours, and reload timelines only when the mirrored values actually changed.
+                .onChange(of: "\(themeOverridesRaw)|\(accentRaw)|\(accentCustomHex)", initial: true) { _, _ in
+                    if WidgetTheme.mirror(overridesRaw: themeOverridesRaw, accentRaw: accentRaw,
+                                          accentHex: accentCustomHex) {
+                        WidgetCenter.shared.reloadAllTimelines()
+                    }
                 }
                 // Apple Health is explicitly opt-in. Once any write type is authorized, keep one
                 // best-effort BGAppRefresh request armed; revoking all write access cancels it.

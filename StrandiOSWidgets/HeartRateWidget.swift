@@ -23,10 +23,12 @@ struct HeartRateProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (HeartRateEntry) -> Void) {
+        WidgetTheme.applyInExtension()
         completion(HeartRateEntry(date: Date(), snap: WidgetSnapshot.load()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<HeartRateEntry>) -> Void) {
+        WidgetTheme.applyInExtension()
         let entry = HeartRateEntry(date: Date(), snap: WidgetSnapshot.load())
         // The app reloads timelines when the heart rate moves, so this is only the safety net for when
         // it is not running. Fifteen minutes rather than the trace's one-minute bucket: a widget cannot

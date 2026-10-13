@@ -84,7 +84,7 @@ struct LiftSessionExerciseSheet: View {
                         .focused($focused, equals: .exercise)
                     if !suggestions.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Used before").strandOverline()
+                            Text("Suggestions").strandOverline()
                             ForEach(suggestions, id: \.id) { row in
                                 Button { adopt(row) } label: { LiftExerciseSuggestionLabel(row: row) }
                                     .buttonStyle(.plain)

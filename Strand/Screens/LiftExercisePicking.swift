@@ -1,6 +1,7 @@
 import SwiftUI
 import StrandDesign
 import WhoopStore
+import StrandAnalytics
 
 // What the two exercise pickers share: the program line editor (`LiftProgramItemSheet`) and the running
 // session's Add exercise sheet (`LiftSessionExerciseSheet`). The user's own exercise names offered back,
@@ -17,9 +18,20 @@ enum LiftExerciseVocabulary {
                             limit: Int = 6) -> [LiftExerciseRow] {
         let query = typed.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !query.isEmpty else { return Array(vocabulary.prefix(limit)) }
-        return Array(vocabulary
+        let own = Array(vocabulary
             .filter { $0.name.lowercased().contains(query) && $0.name.lowercased() != query }
             .prefix(limit))
+        guard own.count < limit else { return own }
+        // Top up from the built-in library with exercises the user has not named themselves. Their own
+        // classification of a name always wins, so a library entry never shadows a vocabulary row.
+        let library = ExerciseLibrary.matches(typed, excluding: Set(vocabulary.map(\.name)),
+                                              limit: limit - own.count)
+            .map { entry in
+                LiftExerciseRow(id: "library:" + entry.name, deviceId: "", name: entry.name,
+                                primaryMuscle: entry.primary, secondaryMuscles: entry.secondary,
+                                createdAt: 0, lastUsedTs: nil)
+            }
+        return own + library
     }
 
     /// Remember `name` with its muscles, so it is offered back next time. `upsertLiftExercises` is keyed

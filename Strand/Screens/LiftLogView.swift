@@ -26,12 +26,15 @@ struct LiftLogView: View {
     /// The program being created or edited (nil = the editor is closed).
     @State private var editing: ProgramEditTarget?
     @State private var importing = false
+    @State private var showingLibrary = false
     /// The live session, owned at the app root so it survives this screen going away.
     @EnvironmentObject private var session: LiftSessionController
     /// Recent finished sessions, newest first.
     @State private var history: [LiftSessionRow] = []
     /// This week's fractional sets per muscle.
     @State private var weekCounts: [LiftMuscle: Double] = [:]
+    /// Per-muscle leftover training load from the last week of sessions (`MuscleFreshness`).
+    @State private var freshness: [MuscleFreshness.Reading] = []
     /// The session whose detail sheet is open.
     @State private var viewing: SessionDetailTarget?
 
@@ -48,12 +51,16 @@ struct LiftLogView: View {
                 headerCard
                 programsSection
                 weekSection
+                freshnessSection
                 historySection
             }
         }
         // Also on a saved session: the session sheet lives above this screen and cannot tell it
         // directly, and a save does not always bump `refreshSeq`.
         .task(id: "\(repo.refreshSeq)-\(session.savedSessions)") { await load() }
+        .sheet(isPresented: $showingLibrary) {
+            ExerciseLibraryView(onClose: { showingLibrary = false })
+        }
         .sheet(item: $editing) { target in
             LiftProgramEditorSheet(program: target.program) {
                 await load()
@@ -94,6 +101,9 @@ struct LiftLogView: View {
                     .font(StrandFont.footnote)
                     .foregroundStyle(StrandPalette.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                NoopButton("Exercise library", systemImage: "books.vertical", kind: .secondary) {
+                    showingLibrary = true
+                }
             }
         }
     }
@@ -311,6 +321,69 @@ struct LiftLogView: View {
         }
     }
 
+    // MARK: - Muscle freshness
+
+    private var freshnessSection: some View {
+        let trained = freshness.filter { $0.lastTrainedTs != nil }
+        return VStack(alignment: .leading, spacing: NoopMetrics.gap) {
+            SectionHeader("Muscle freshness", overline: "Estimated recovery")
+            NoopCard {
+                if trained.isEmpty {
+                    Text("After a session, this shows how much load each muscle is still carrying, so you can see what is ready to train again.")
+                        .font(StrandFont.footnote)
+                        .foregroundStyle(StrandPalette.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    VStack(alignment: .leading, spacing: NoopMetrics.rowSpacing) {
+                        ForEach(LiftMuscle.Region.allCases, id: \.self) { region in
+                            let rows = freshness.filter { $0.muscle.region == region }
+                            Text(regionLabel(region)).strandOverline()
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
+                                ForEach(rows, id: \.muscle) { freshnessChip($0) }
+                            }
+                        }
+                        Text("Each set's load fades with a half-life of about a day and a half. Muscles recover at different speeds for different people, so treat this as a guide, not a rule.")
+                            .font(StrandFont.footnote)
+                            .foregroundStyle(StrandPalette.textTertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+    }
+
+    private func freshnessChip(_ r: MuscleFreshness.Reading) -> some View {
+        let color: Color = r.freshnessPct >= 70 ? StrandPalette.statusPositive
+            : r.freshnessPct >= 40 ? StrandPalette.statusWarning : StrandPalette.statusCritical
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(r.muscle.displayName)
+                .font(StrandFont.caption)
+                .foregroundStyle(StrandPalette.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Text("\(r.freshnessPct)%")
+                .font(StrandFont.captionNumber)
+                .foregroundStyle(r.lastTrainedTs == nil ? StrandPalette.textTertiary : color)
+        }
+        .padding(8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(r.lastTrainedTs == nil ? StrandPalette.surfaceInset : color.opacity(0.14))
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("\(r.muscle.displayName), \(r.freshnessPct) percent fresh"))
+    }
+
+    private func regionLabel(_ region: LiftMuscle.Region) -> String {
+        switch region {
+        case .push:  return String(localized: "Push")
+        case .pull:  return String(localized: "Pull")
+        case .legs:  return String(localized: "Legs")
+        case .trunk: return String(localized: "Core")
+        }
+    }
+
     // MARK: - History
 
     private var historySection: some View {
@@ -371,6 +444,14 @@ struct LiftLogView: View {
         weekCounts = (try? await store.liftSetCounts(deviceId: repo.deviceId,
                                                       fromTs: now - 7 * 86_400,
                                                       toTs: now).fractional) ?? [:]
+        let lookback = now - Int(MuscleFreshness.lookbackHours * 3600)
+        var recent: [MuscleFreshness.Session] = []
+        for session in history {
+            guard let end = session.endTs, end >= lookback else { continue }
+            let sets = (try? await store.liftSets(sessionId: session.id)) ?? []
+            recent.append(MuscleFreshness.Session(endTs: end, sets: sets))
+        }
+        freshness = MuscleFreshness.readings(recent, now: now)
         loaded = true
     }
 }

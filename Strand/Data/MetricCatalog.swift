@@ -115,7 +115,7 @@ struct MetricDescriptor: Identifiable, Hashable {
 /// Canonical catalog — mirrors the WHOOP "Trend View" plus Apple Health body metrics.
 /// Keys match exactly what the importers write into metricSeries.
 enum MetricCatalog {
-    static let categories = ["Heart", "Charge", "Rest", "Effort", "Health", "Nutrition", "Mind"]
+    static let categories = ["Heart", "Charge", "Rest", "Effort", "Mobility", "Health", "Nutrition", "Mind"]
 
     static let all: [MetricDescriptor] = [
         // ── Heart
@@ -191,6 +191,72 @@ enum MetricCatalog {
         // ── Mind (daily mood check-in, 1–5; non-clinical self-tracking)
         d("mood", String(localized: "Mood"), "Mind", "/5", "noop-mood", "face.smiling", 0, true),
 
+        // ── Extended Apple Health (HealthKitBridge+Extended). Same metricSeries mechanism under the
+        //    apple-health source, so each lights up Explore, Compare and the correlation scan.
+        d("walking_hr", String(localized: "Walking Heart Rate"), "Heart", "bpm", "apple-health", "figure.walk.motion", 0, false),
+        d("hr_recovery_1min", String(localized: "Heart Rate Recovery (1 min)"), "Heart", "bpm", "apple-health", "arrow.down.heart", 0, true),
+        d("high_hr_events", String(localized: "High Heart Rate Alerts"), "Heart", "", "apple-health", "exclamationmark.triangle", 0, false),
+        d("low_hr_events", String(localized: "Low Heart Rate Alerts"), "Heart", "", "apple-health", "exclamationmark.triangle", 0, false),
+        d("irregular_rhythm_events", String(localized: "Irregular Rhythm Alerts"), "Heart", "", "apple-health", "waveform.path.ecg", 0, false),
+        d("exercise_min", String(localized: "Exercise Minutes"), "Effort", "min", "apple-health", "figure.run", 0, true),
+        d("stand_min", String(localized: "Stand Time"), "Effort", "min", "apple-health", "figure.stand", 0, true),
+        d("flights", String(localized: "Flights Climbed"), "Effort", "", "apple-health", "figure.stairs", 0, true),
+        d("walk_run_km", String(localized: "Walking + Running Distance"), "Effort", "km", "apple-health", "map", 2, true),
+        d("walking_speed", String(localized: "Walking Speed"), "Mobility", "km/h", "apple-health", "figure.walk", 1, true),
+        d("walking_step_length", String(localized: "Walking Step Length"), "Mobility", "cm", "apple-health", "ruler", 0, true),
+        d("walking_asymmetry", String(localized: "Walking Asymmetry"), "Mobility", "%", "apple-health", "arrow.left.and.right", 1, false),
+        d("walking_double_support", String(localized: "Double Support Time"), "Mobility", "%", "apple-health", "shoeprints.fill", 1, false),
+        d("walking_steadiness", String(localized: "Walking Steadiness"), "Mobility", "%", "apple-health", "figure.walk.diamond", 0, true),
+        d("six_min_walk", String(localized: "Six-Minute Walk"), "Mobility", "m", "apple-health", "stopwatch", 0, true),
+        d("stair_ascent_speed", String(localized: "Stair Speed: Up"), "Mobility", "m/s", "apple-health", "arrow.up.right", 2, true),
+        d("stair_descent_speed", String(localized: "Stair Speed: Down"), "Mobility", "m/s", "apple-health", "arrow.down.right", 2, true),
+        d("running_speed", String(localized: "Running Speed"), "Mobility", "km/h", "apple-health", "figure.run", 1, true),
+        d("running_power", String(localized: "Running Power"), "Mobility", "W", "apple-health", "bolt", 0, nil),
+        d("running_stride", String(localized: "Running Stride Length"), "Mobility", "m", "apple-health", "ruler", 2, nil),
+        d("running_ground_contact", String(localized: "Ground Contact Time"), "Mobility", "ms", "apple-health", "shoeprints.fill", 0, false),
+        d("running_vertical_osc", String(localized: "Vertical Oscillation"), "Mobility", "cm", "apple-health", "arrow.up.and.down", 1, false),
+        d("daylight_min", String(localized: "Time in Daylight"), "Health", "min", "apple-health", "sun.max", 0, true),
+        d("env_audio_db", String(localized: "Environmental Sound"), "Health", "dB", "apple-health", "ear", 0, false),
+        d("headphone_audio_db", String(localized: "Headphone Audio"), "Health", "dB", "apple-health", "headphones", 0, false),
+        d("waist_cm", String(localized: "Waist Circumference"), "Health", "cm", "apple-health", "ruler", 1, nil),
+        d("mindful_min", String(localized: "Mindful Minutes"), "Mind", "min", "apple-health", "brain.head.profile", 0, true),
+        d("sleep_latency_min", String(localized: "Time to Fall Asleep"), "Rest", "min", "apple-health", "hourglass", 0, false),
+        d("awakenings", String(localized: "Awakenings"), "Rest", "", "apple-health", "eye", 0, false),
+        d("sleep_efficiency", String(localized: "Sleep Efficiency"), "Rest", "%", "apple-health", "bed.double.fill", 0, true),
+        d("nap_min", String(localized: "Nap Time"), "Rest", "min", "apple-health", "powersleep", 0, nil),
+        d("naps", String(localized: "Naps"), "Rest", "", "apple-health", "powersleep", 0, nil),
+        d("state_of_mind", String(localized: "State of Mind"), "Mind", "", "apple-health", "face.smiling", 2, true,
+          String(localized: "Average mood logged in Apple Health, from -1 (very unpleasant) to +1 (very pleasant).")),
+        d("stand_hours", String(localized: "Stand Hours"), "Effort", "h", "apple-health", "figure.stand", 0, true),
+        d("move_min", String(localized: "Move Minutes"), "Effort", "min", "apple-health", "figure.walk", 0, true),
+        d("cycling_km", String(localized: "Cycling Distance"), "Effort", "km", "apple-health", "bicycle", 1, true),
+        d("cycling_speed", String(localized: "Cycling Speed"), "Mobility", "km/h", "apple-health", "bicycle", 1, true),
+        d("cycling_power", String(localized: "Cycling Power"), "Mobility", "W", "apple-health", "bolt", 0, nil),
+        d("cycling_cadence", String(localized: "Cycling Cadence"), "Mobility", "rpm", "apple-health", "arrow.triangle.2.circlepath", 0, nil),
+        d("swim_m", String(localized: "Swimming Distance"), "Effort", "m", "apple-health", "figure.pool.swim", 0, true),
+        d("swim_strokes", String(localized: "Swimming Strokes"), "Effort", "", "apple-health", "figure.pool.swim", 0, nil),
+        d("falls", String(localized: "Falls"), "Health", "", "apple-health", "figure.fall", 0, false),
+        d("uv_index", String(localized: "UV Exposure"), "Health", "", "apple-health", "sun.max.trianglebadge.exclamationmark", 0, nil),
+        d("handwashing", String(localized: "Handwashing"), "Health", "", "apple-health", "hands.sparkles", 0, true),
+        d("toothbrushing", String(localized: "Toothbrushing"), "Health", "", "apple-health", "mouth", 0, true),
+        d("height_cm", String(localized: "Height"), "Health", "cm", "apple-health", "ruler", 0, nil),
+        d("basal_body_temp", String(localized: "Basal Body Temperature"), "Health", "°C", "apple-health", "thermometer", 2, nil),
+        d("bp_systolic", String(localized: "Blood Pressure (Systolic)"), "Health", "mmHg", "apple-health", "heart.text.square", 0, false),
+        d("bp_diastolic", String(localized: "Blood Pressure (Diastolic)"), "Health", "mmHg", "apple-health", "heart.text.square", 0, false),
+        d("blood_glucose", String(localized: "Blood Glucose"), "Health", "mg/dL", "apple-health", "drop", 0, nil),
+        d("peak_flow", String(localized: "Peak Expiratory Flow"), "Health", "L/min", "apple-health", "lungs", 0, true),
+        d("fev1", String(localized: "FEV1"), "Health", "L", "apple-health", "lungs", 2, true),
+        d("alcohol_drinks", String(localized: "Alcoholic Drinks"), "Health", "", "apple-health", "wineglass", 0, false),
+        d("period_day", String(localized: "Period Day"), "Health", "", "apple-health", "drop.circle", 0, nil),
+        d("symptom_headache", String(localized: "Headache"), "Health", "", "apple-health", "bandage", 0, false),
+        d("symptom_fatigue", String(localized: "Fatigue"), "Health", "", "apple-health", "battery.25", 0, false),
+        d("symptom_nausea", String(localized: "Nausea"), "Health", "", "apple-health", "bandage", 0, false),
+        d("symptom_cough", String(localized: "Cough"), "Health", "", "apple-health", "bandage", 0, false),
+        d("symptom_fever", String(localized: "Fever"), "Health", "", "apple-health", "thermometer.high", 0, false),
+        d("symptom_sore_throat", String(localized: "Sore Throat"), "Health", "", "apple-health", "bandage", 0, false),
+        d("symptom_sleep_changes", String(localized: "Sleep Changes"), "Health", "", "apple-health", "bed.double", 0, false),
+        d("symptom_mood_changes", String(localized: "Mood Changes"), "Mind", "", "apple-health", "face.dashed", 0, false),
+
         // ── Mi Band (imported from Mi Fitness). Same metricSeries mechanism as Apple Health /
         //    Nutrition, so these light up Explore, Compare and the correlation scan. Distinct
         //    `source` keeps them comparable against the WHOOP/Apple versions rather than colliding.
@@ -257,6 +323,7 @@ enum MetricCatalog {
         case "Health":    return String(localized: "Health")
         case "Nutrition": return String(localized: "Nutrition")
         case "Mind":      return String(localized: "Mind")
+        case "Mobility":  return String(localized: "Mobility")
         default:          return category
         }
     }
