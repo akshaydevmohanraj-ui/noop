@@ -14,11 +14,13 @@ struct NOOPProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (NOOPEntry) -> Void) {
+        WidgetTheme.applyInExtension()
         let fallback: WidgetSnapshot = context.isPreview ? .placeholder : .unavailable
         completion(NOOPEntry(date: Date(), snapshot: WidgetSnapshot.load() ?? fallback))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<NOOPEntry>) -> Void) {
+        WidgetTheme.applyInExtension()
         // Gallery previews use `placeholder(in:)` / getSnapshot's preview branch. A real timeline
         // with no shared snapshot must show missing data honestly, never plausible sample numbers.
         let snap = WidgetSnapshot.load() ?? .unavailable

@@ -25,10 +25,12 @@ struct StressProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (StressEntry) -> Void) {
+        WidgetTheme.applyInExtension()
         completion(StressEntry(date: Date(), snap: WidgetSnapshot.load()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<StressEntry>) -> Void) {
+        WidgetTheme.applyInExtension()
         let entry = StressEntry(date: Date(), snap: WidgetSnapshot.load())
         // Half an hour, where the heart-rate widget takes fifteen minutes. This curve gains at most one
         // point an hour, so a tighter net would spend budget on entries identical to the one before it.

@@ -215,6 +215,7 @@ struct SettingsView: View {
 
     /// "What's New" changelog sheet, reachable any time from About.
     @State private var showWhatsNew = false
+    @State private var showThemeStudio = false
 
     /// "How your scores work" explainer sheet, reachable any time from About.
     @State private var showScoringGuide = false
@@ -337,6 +338,9 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showWhatsNew) {
             WhatsNewView(onClose: { showWhatsNew = false })
+        }
+        .sheet(isPresented: $showThemeStudio) {
+            ThemeStudioView(onClose: { showThemeStudio = false })
         }
         .sheet(isPresented: $showScoringGuide) {
             ScoringGuideView(onClose: { showScoringGuide = false })
@@ -1182,6 +1186,15 @@ struct SettingsView: View {
                     .pickerStyle(.menu)
                     .tint(StrandPalette.accent)
                     .accessibilityLabel("Theme preset")
+                }
+                rowDivider
+                // Theme Studio: per-pillar colours, saved themes and shareable theme codes, layered on
+                // top of the preset above.
+                FormRow(label: "Theme Studio") {
+                    NoopButton("Customise", systemImage: "paintpalette", kind: .secondary) {
+                        showThemeStudio = true
+                    }
+                    .accessibilityLabel("Open Theme Studio")
                 }
                 rowDivider
                 FormRow(label: "Theme") {
